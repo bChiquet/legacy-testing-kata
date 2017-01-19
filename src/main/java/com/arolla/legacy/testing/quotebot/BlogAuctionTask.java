@@ -1,41 +1,31 @@
 package com.arolla.legacy.testing.quotebot;
 
-import java.util.Calendar;
-import java.util.Date;
-
-import com.arolla.legacy.testing.thirdparty.quotebot.MarketStudyVendor;
 import com.arolla.legacy.testing.thirdparty.quotebot.QuotePublisher;
 
 public class BlogAuctionTask {
-
-	private final MarketStudyVendor marketDataRetriever;
+	private final Pricer pricer;
+	private final Publisher publish;
+	private final Time time;
 
 	public BlogAuctionTask() {
-		marketDataRetriever = new MarketStudyVendor();
+		pricer = new PricerAdapter();
+		publish = QuotePublisher.INSTANCE::publish;
+		time = new Time();
+	}
+
+	public BlogAuctionTask(Pricer marketDataRetriever, Publisher publisher, Time timer) {
+		this.pricer = marketDataRetriever;
+		publish = publisher;
+		time = timer;
 	}
 
 	@SuppressWarnings("deprecation")
 	public void PriceAndPublish(String blog, String mode) {
-		double avgPrice = marketDataRetriever.averagePrice(blog);
-		// FIXME should actually be +2 not +1
-		double proposal = avgPrice + 1;
-		double timeFactor = 1;
-		if (mode.equals("SLOW")) {
-			timeFactor = 2;
-		}
-		if (mode.equals("MEDIUM")) {
-			timeFactor = 4;
-		}
-		if (mode.equals("FAST")) {
-			timeFactor = 8;
-		}
-		if (mode.equals("ULTRAFAST")) {
-			timeFactor = 13;
-		}
+		double avgPrice = pricer.price(blog);
+		double proposal = avgPrice + 2;
 		proposal = proposal % 2 == 0 ? 3.14 * proposal : 3.15
-				* timeFactor
-				* (new Date().getTime() - new Date(2000, Calendar.JANUARY, 1)
-						.getTime());
-		QuotePublisher.INSTANCE.publish(proposal);
+				* Speed.getTimeFactor(mode)
+				* time.getTimePassed();
+		publish.publish(proposal);
 	}
 }
